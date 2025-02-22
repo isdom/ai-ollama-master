@@ -66,17 +66,19 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                 memo = completedTasks.get(taskId);
                 if (null != memo) {
                     statues.add(TaskStatus.builder()
-                            .task_id(taskId)
+                            .task(memo.task)
                             .status("done")
+                            .response(memo.response)
                             .build());
                 } else {
                     statues.add(TaskStatus.builder()
-                            .task_id(taskId)
+                            .task(ChatTask.builder().task_id(taskId).build())
                             .status("not_found")
                             .build());
                 }
             } else {
-                statues.add(TaskStatus.builder().task_id(taskId)
+                statues.add(TaskStatus.builder()
+                        .task(memo.task)
                         .status("pending")
                         .build());
             }
@@ -87,14 +89,17 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     @Override
     public TaskStatus[] queryAllTaskStatus() {
         final List<TaskStatus> statues = new ArrayList<>();
-        for (TaskMemo memo : pendingTasks.values()) {
-            statues.add(TaskStatus.builder().task_id(memo.task.task_id)
+        for (final TaskMemo memo : pendingTasks.values()) {
+            statues.add(TaskStatus.builder()
+                    .task(memo.task)
                     .status("pending")
                     .build());
         }
-        for (TaskMemo memo : completedTasks.values()) {
-            statues.add(TaskStatus.builder().task_id(memo.task.task_id)
+        for (final TaskMemo memo : completedTasks.values()) {
+            statues.add(TaskStatus.builder()
+                    .task(memo.task)
                     .status("done")
+                    .response(memo.response)
                     .build());
         }
         return statues.toArray(new TaskStatus[0]);
@@ -120,8 +125,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     private void checkAndExecuteTasks() {
         updateAgents();
         try {
-            final int pendings = pendingTaskCount();
-            if (pendings > 0) {
+            if (pendingTaskCount() > 0) {
                 if (totalFreeWorks() > 0) {
                     for (final TaskMemo memo : this.pendingTasks.values()) {
                         if (0 == memo.status) {
@@ -131,6 +135,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                             final RFuture<String> future = asyncService.chat(msg2list(memo.task.messages));
                             future.whenComplete((resp, ex) -> {
                                 if (resp != null) {
+                                    memo.response = resp;
                                     this.pendingTasks.remove(memo.task.task_id);
                                     completedTasks.put(memo.task.task_id, memo);
                                     log.info("task: {} complete_with: {}, cost: {} s",
@@ -205,7 +210,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         private ChatTask task;
         // 0: todo  1: executing
         private int status;
-        private String resp;
+        private String response;
     }
 
     @Value("${task.check_interval:100}") // default: 100ms

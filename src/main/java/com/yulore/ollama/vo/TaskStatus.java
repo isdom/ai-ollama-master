@@ -6,6 +6,7 @@ import lombok.ToString;
 @Builder
 @ToString
 public class TaskStatus {
-    public String task_id;
+    public ChatTask task;
     public String status;
+    public String response;
 }
