@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -68,7 +69,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                     statues.add(TaskStatus.builder()
                             .task(memo.task)
                             .status("done")
-                            .response(memo.response)
+                            .result(memo.result)
                             .build());
                 } else {
                     statues.add(TaskStatus.builder()
@@ -99,7 +100,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
             statues.add(TaskStatus.builder()
                     .task(memo.task)
                     .status("done")
-                    .response(memo.response)
+                    .result(memo.result)
                     .build());
         }
         return statues.toArray(new TaskStatus[0]);
@@ -130,12 +131,12 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                     for (final TaskMemo memo : this.pendingTasks.values()) {
                         if (0 == memo.status) {
                             memo.status = 1; // executing
-                            log.info("execute_chat_task: {}", memo.task);
+                            log.info("start_chat_task: {}", memo.task);
                             final long now = System.currentTimeMillis();
-                            final RFuture<String> future = asyncService.chat(msg2list(memo.task.messages));
+                            final RFuture<Map<String,String>> future = asyncService.chat(msg2list(memo.task.messages));
                             future.whenComplete((resp, ex) -> {
                                 if (resp != null) {
-                                    memo.response = resp;
+                                    memo.result = resp.get("result");
                                     this.pendingTasks.remove(memo.task.task_id);
                                     completedTasks.put(memo.task.task_id, memo);
                                     log.info("task: {} complete_with: {}, cost: {} s",
@@ -148,7 +149,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                                     memo.status = 0;
                                 }
                             });
-                            log.info("async_execute_zeroshot_task: {} ok", memo.task);
+                            log.info("async_start_chat_task: {} ok", memo.task);
                             break;
                         }
                     }
@@ -210,7 +211,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         private ChatTask task;
         // 0: todo  1: executing
         private int status;
-        private String response;
+        private String result;
     }
 
     @Value("${task.check_interval:100}") // default: 100ms

@@ -1,5 +1,7 @@
 package com.yulore.api;
 
+import java.util.Map;
+
 public interface OllamaService {
-    String chat(final String[] roleAndContents);
+    Map<String, String> chat(final String[] roleAndContents);
 }
