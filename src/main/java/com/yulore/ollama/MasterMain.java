@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yulore.api.MasterService;
 import com.yulore.ollama.service.ChatTaskService;
+import com.yulore.ollama.vo.ChatResponse;
 import com.yulore.ollama.vo.ChatTask;
 import com.yulore.ollama.vo.WSCommandVO;
 import com.yulore.ollama.vo.WSEventVO;
@@ -84,7 +85,10 @@ public class MasterMain {
             if ("chat".equals(cmd.header.get("name"))) {
                 final var cmdChatTask = new ObjectMapper().readValue(message, WSCMD_CHAT_TASK);
                 log.info("cmd: {}", cmdChatTask);
-                taskService.commitChatTask(cmdChatTask.payload, (result)-> WSEventVO.sendEvent(webSocket, "chat_result", result));
+                taskService.commitChatTask(cmdChatTask.payload,
+                        (result)-> WSEventVO.sendEvent(webSocket, "chat_response", ChatResponse.builder()
+                                .task_id(cmdChatTask.payload.task_id)
+                                .result(result).build()));
             } else if ("worker_status".equals(cmd.header.get("name"))) {
                 WSEventVO.sendEvent(webSocket, "worker_status", taskService.queryWorkerStatus());
             }
