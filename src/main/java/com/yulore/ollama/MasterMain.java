@@ -3,7 +3,6 @@ package com.yulore.ollama;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yulore.api.MasterService;
 import com.yulore.ollama.vo.ChatTask;
@@ -31,8 +30,10 @@ import java.util.concurrent.Executors;
 @Component
 public class MasterMain {
 
-    public static final TypeReference<WSCommandVO<Void>> CMD_VOID = new TypeReference<>() {};
-    public static final TypeReference<WSCommandVO<ChatTask>> CMD_CHAT_TASK = new TypeReference<>() {};
+    // 为了正确解析泛型类 WSCommandVO<PAYLOAD> 的 payload 字段类型，需通过 TypeReference 或 JavaType 明确告知 Jackson 泛型参数的具体类型
+    // 方法1: 使用 TypeReference
+    public static final TypeReference<WSCommandVO<Void>> WSCMD_VOID = new TypeReference<>() {};
+    public static final TypeReference<WSCommandVO<ChatTask>> WSCMD_CHAT_TASK = new TypeReference<>() {};
 
     @PostConstruct
     public void start() {
@@ -59,7 +60,7 @@ public class MasterMain {
             public void onMessage(final WebSocket webSocket, final String message) {
                 log.info("received text message from {}: {}", webSocket.getRemoteSocketAddress(), message);
                 try {
-                    handleWSCommand(new ObjectMapper().readValue(message, CMD_VOID), webSocket, message);
+                    handleWSCommand(new ObjectMapper().readValue(message, WSCMD_VOID), webSocket, message);
                 } catch (JsonProcessingException ex) {
                     log.error("handleWSCommand {}: {}, an error occurred when parseAsJson: {}",
                             webSocket.getRemoteSocketAddress(), message, ex.toString());
@@ -83,11 +84,11 @@ public class MasterMain {
     private void handleWSCommand(final WSCommandVO<Void> cmd, final WebSocket webSocket, final String message) {
         try {
             if ("chat".equals(cmd.getHeader().get("name"))) {
-                final WSCommandVO<ChatTask> cmdChatTask = new ObjectMapper().readValue(message, CMD_CHAT_TASK);
+                final var cmdChatTask = new ObjectMapper().readValue(message, WSCMD_CHAT_TASK);
                 log.info("cmd: {}", cmdChatTask);
                 // _sessionExecutor.submit(()-> handleStartTranscriptionCommand(cmd, webSocket));
             }
-        } catch (JsonProcessingException ex) {
+        } catch (final JsonProcessingException ex) {
             log.warn("handleWSCommand failed: {}", ExceptionUtil.exception2detail(ex));
             // throw new RuntimeException(ex);
         }
