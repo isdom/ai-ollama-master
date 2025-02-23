@@ -77,6 +77,7 @@ public class MasterMain {
             public void onStart() {
             }
         };
+        _wsServer.setConnectionLostTimeout(_ws_heartbeat);
         _wsServer.start();
     }
 
@@ -126,6 +127,9 @@ public class MasterMain {
 
     @Value("${ws_server.port}")
     private int _ws_port;
+
+    @Value("${ws_server.heartbeat:30}")
+    private int _ws_heartbeat;
 
     private WebSocketServer _wsServer;
 
