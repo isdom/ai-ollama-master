@@ -6,6 +6,7 @@
       <item index="1" class="java.lang.String" itemvalue="org.springframework.web.bind.annotation.RequestMapping" />
     </list>
     <writeAnnotations>
+      <writeAnnotation name="org.springframework.beans.factory.annotation.Autowired" />
       <writeAnnotation name="org.springframework.beans.factory.annotation.Value" />
     </writeAnnotations>
   </component>

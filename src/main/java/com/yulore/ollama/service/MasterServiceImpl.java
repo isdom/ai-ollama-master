@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -45,9 +48,13 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     }
 
     @Override
-    public void commitChatTask(final ChatTask task) {
+    public void commitChatTask(final ChatTask task, final Consumer<String> onResult) {
         if ( null != pendingTasks.putIfAbsent(task.task_id,
-                TaskMemo.builder().task(task).status(0).build()) ) {
+                TaskMemo.builder()
+                        .task(task)
+                        .status(0)
+                        .onResult(onResult)
+                        .build()) ) {
             log.warn("commitChatTask: task_id:{} has_committed_already, ignore", task.task_id);
         }
     }
@@ -139,6 +146,13 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                                     memo.result = resp.get("result");
                                     this.pendingTasks.remove(memo.task.task_id);
                                     completedTasks.put(memo.task.task_id, memo);
+                                    if (memo.onResult != null) {
+                                        try {
+                                            memo.onResult.accept(memo.result);
+                                        } catch (Exception ex2) {
+                                            log.warn("task_on_result failed: {}", ExceptionUtil.exception2detail(ex2));
+                                        }
+                                    }
                                     log.info("task: {} complete_with: {}, cost: {} s",
                                             memo.task.task_id, resp, (System.currentTimeMillis() - now) / 1000.0f);
                                 }
@@ -212,6 +226,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         // 0: todo  1: executing
         private int status;
         private String result;
+        private Consumer<String> onResult;
     }
 
     @Value("${task.check_interval:100}") // default: 100ms

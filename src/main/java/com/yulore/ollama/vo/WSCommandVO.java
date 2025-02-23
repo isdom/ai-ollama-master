@@ -12,6 +12,6 @@ import java.util.Map;
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WSCommandVO<PAYLOAD> {
-    Map<String, String> header;
-    PAYLOAD payload;
+    public Map<String, String> header;
+    public PAYLOAD payload;
 }

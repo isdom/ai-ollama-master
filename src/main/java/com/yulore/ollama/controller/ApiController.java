@@ -24,7 +24,7 @@ public class ApiController {
 
         ApiResponse<Void> resp = null;
         try {
-            taskService.commitChatTask(task);
+            taskService.commitChatTask(task, null);
             resp = ApiResponse.<Void>builder().code("0000").build();
         } catch (final Exception ex) {
             log.warn("commit_chat_task failed: {}", ExceptionUtil.exception2detail(ex));
