@@ -89,7 +89,7 @@ public class MasterMain {
             public void onStart() {
             }
         };
-        _wsServer.setConnectionLostTimeout(_ws_heartbeat);
+        // _wsServer.setConnectionLostTimeout(_ws_heartbeat);
         _wsServer.start();
     }
 
