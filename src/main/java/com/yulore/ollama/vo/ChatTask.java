@@ -10,12 +10,6 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 @ToString
 public class ChatTask {
-    @Data
-    @ToString
-    public static class Message {
-        public String role;
-        public String content;
-    }
     public String task_id;    // "<uuid>"
-    public Message[] messages;
+    public ChatMessage[] messages;
 }

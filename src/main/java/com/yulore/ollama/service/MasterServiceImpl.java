@@ -162,9 +162,9 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         }
     }
 
-    private String[] msg2list(final ChatTask.Message[] messages) {
+    private String[] msg2list(final ChatMessage[] messages) {
         final List<String> strs = new ArrayList<>(messages.length * 2);
-        for (ChatTask.Message msg : messages) {
+        for (ChatMessage msg : messages) {
             strs.add(msg.role);
             strs.add(msg.content);
         }
