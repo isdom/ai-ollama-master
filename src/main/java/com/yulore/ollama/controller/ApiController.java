@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.async.DeferredResult;
 
 @Controller
 @Slf4j
@@ -19,20 +20,25 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class ApiController {
     @RequestMapping(value = "/commit_chat_task", method = RequestMethod.POST)
     @ResponseBody
-    public ApiResponse<Void> commitChatTask(@RequestBody final ChatTask task) {
+    public DeferredResult<ApiResponse<ChatResponse>> commitChatTask(@RequestBody final ChatTask task) {
         log.info("commit_chat_task: {}", task);
 
-        ApiResponse<Void> resp = null;
+        // 定义异步结果（10 minutes 超时）
+        final DeferredResult<ApiResponse<ChatResponse>> deferredResult = new DeferredResult<>(1000L * 60 * 10);
         try {
-            taskService.commitChatTask(task, null);
-            resp = ApiResponse.<Void>builder().code("0000").build();
+            taskService.commitChatTask(task, (result)->{
+                deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("0000").data(ChatResponse.builder()
+                        .task_id(task.task_id)
+                        .result(result)
+                        .build()).build());
+                log.info("commit_chat_task: complete with resp: {}", result);
+            });
         } catch (final Exception ex) {
             log.warn("commit_chat_task failed: {}", ExceptionUtil.exception2detail(ex));
-            resp = ApiResponse.<Void>builder().code("2000").message(ExceptionUtil.exception2detail(ex)).build();
+            deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("2000").message(ExceptionUtil.exception2detail(ex)).build());
         } finally {
-            log.info("commit_chat_task: complete with resp: {}", resp);
         }
-        return resp;
+        return deferredResult;
     }
 
     @RequestMapping(value = "/worker/status", method = RequestMethod.GET)
