@@ -10,5 +10,6 @@ import lombok.extern.jackson.Jacksonized;
 @ToString
 public class ChatResponse {
     public String task_id;    // "<uuid>"
+    public long time_cost;
     public String result;
 }

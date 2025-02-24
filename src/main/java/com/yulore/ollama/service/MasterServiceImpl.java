@@ -48,7 +48,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     }
 
     @Override
-    public void commitChatTask(final ChatTask task, final Consumer<String> onResult) {
+    public void commitChatTask(final ChatTask task, final Consumer<ChatResponse> onResult) {
         if ( null != pendingTasks.putIfAbsent(task.task_id,
                 TaskMemo.builder()
                         .task(task)
@@ -135,7 +135,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         try {
             if (pendingTaskCount() > 0) {
                 if (totalFreeWorks() > 0) {
-                    for (final TaskMemo memo : this.pendingTasks.values()) {
+                    for (final TaskMemo memo : pendingTasks.values()) {
                         if (0 == memo.status) {
                             memo.status = 1; // executing
                             log.info("start_chat_task: {}", memo.task);
@@ -144,17 +144,22 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                             future.whenComplete((resp, ex) -> {
                                 if (resp != null) {
                                     memo.result = resp.get("result");
-                                    this.pendingTasks.remove(memo.task.task_id);
+                                    memo.time_cost = System.currentTimeMillis() - now;
+                                    pendingTasks.remove(memo.task.task_id);
                                     completedTasks.put(memo.task.task_id, memo);
                                     if (memo.onResult != null) {
                                         try {
-                                            memo.onResult.accept(memo.result);
+                                            memo.onResult.accept(ChatResponse.builder()
+                                                    .task_id(memo.task.task_id)
+                                                    .time_cost(memo.time_cost)
+                                                    .result(memo.result)
+                                                    .build());
                                         } catch (Exception ex2) {
                                             log.warn("task_on_result failed: {}", ExceptionUtil.exception2detail(ex2));
                                         }
                                     }
                                     log.info("task: {} complete_with: {}, cost: {} s",
-                                            memo.task.task_id, resp, (System.currentTimeMillis() - now) / 1000.0f);
+                                            memo.task.task_id, resp,  memo.time_cost / 1000.0f);
                                 }
                                 if (ex != null) {
                                     log.info("task: {} failed_with: {}, schedule_to_retry",
@@ -225,8 +230,9 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         private ChatTask task;
         // 0: todo  1: executing
         private int status;
+        private long time_cost;
         private String result;
-        private Consumer<String> onResult;
+        private Consumer<ChatResponse> onResult;
     }
 
     @Value("${task.check_interval:100}") // default: 100ms

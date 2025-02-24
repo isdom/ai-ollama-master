@@ -27,10 +27,7 @@ public class ApiController {
         final DeferredResult<ApiResponse<ChatResponse>> deferredResult = new DeferredResult<>(1000L * 60 * 10);
         try {
             taskService.commitChatTask(task, (result)->{
-                deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("0000").data(ChatResponse.builder()
-                        .task_id(task.task_id)
-                        .result(result)
-                        .build()).build());
+                deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("0000").data(result).build());
                 log.info("commit_chat_task: complete with resp: {}", result);
             });
         } catch (final Exception ex) {

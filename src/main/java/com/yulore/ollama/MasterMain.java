@@ -99,9 +99,7 @@ public class MasterMain {
                 final var cmdChatTask = new ObjectMapper().readValue(message, WSCMD_CHAT_TASK);
                 log.info("cmd: {}", cmdChatTask);
                 taskService.commitChatTask(cmdChatTask.payload,
-                        (result)-> WSEventVO.sendEvent(webSocket, "chat_response", ChatResponse.builder()
-                                .task_id(cmdChatTask.payload.task_id)
-                                .result(result).build()));
+                        (result)-> WSEventVO.sendEvent(webSocket, "chat_response", result));
             } else if ("worker_status".equals(cmd.header.get("name"))) {
                 WSEventVO.sendEvent(webSocket, "worker_status", taskService.queryWorkerStatus());
             }
