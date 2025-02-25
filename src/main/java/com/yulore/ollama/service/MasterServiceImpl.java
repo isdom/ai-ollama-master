@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -33,7 +31,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     @Autowired
     public MasterServiceImpl(@Value("${service.ollama}") final String serviceName,
                              final RedissonClient redisson) {
-        asyncService = redisson.getRemoteService(serviceName)
+        asyncOllamaService = redisson.getRemoteService(serviceName)
                 .get(OllamaServiceAsync.class, RemoteInvocationOptions.defaults()
                         .noAck()
                         .expectResultWithin(600 * 1000L));
@@ -140,7 +138,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                             memo.status = 1; // executing
                             log.info("start_chat_task: {}", memo.task);
                             final long now = System.currentTimeMillis();
-                            final RFuture<Map<String,String>> future = asyncService.chat(msg2list(memo.task.messages));
+                            final RFuture<Map<String,String>> future = asyncOllamaService.chat(msg2list(memo.task.messages));
                             future.whenComplete((resp, ex) -> {
                                 if (resp != null) {
                                     memo.result = resp.get("result");
@@ -221,7 +219,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         return pendingTasks;
     }
 
-    private final OllamaServiceAsync asyncService;
+    private final OllamaServiceAsync asyncOllamaService;
 
     @Builder
     @Data
@@ -247,5 +245,5 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
     private final ConcurrentMap<String, TaskMemo> pendingTasks = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, TaskMemo> completedTasks = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler =
-            Executors.newScheduledThreadPool(1, new DefaultThreadFactory("chatTaskExecutor"));
+            Executors.newScheduledThreadPool(1, new DefaultThreadFactory("taskExecutor"));
 }
