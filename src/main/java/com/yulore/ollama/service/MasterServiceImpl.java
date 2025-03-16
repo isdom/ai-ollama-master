@@ -39,7 +39,8 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                         .noAck()
                         .expectResultWithin(600 * 1000L));
 
-        checkAndExecuteTasks(llm, timerProvider.getObject("llm.ds32.duration", "", new String[]{"method", "chat"}));
+        checkAndExecuteTasks(llm,
+                timerProvider.getObject("llm.ds32.duration", "", new String[]{"method", "chat"}));
     }
 
     @Override
