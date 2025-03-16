@@ -2,7 +2,14 @@
 
 export NACOS_ENDPOINT=
 export NACOS_NAMESPACE=
+
 export NACOS_DATAID=ollama-master
+export METER_DATAID=prometheus
+export METER_GROUP=
+export REDIS_DATAID=redis
+export REDIS_GROUP=
+export SD_DATAID=nacos-sd
+export SD_GROUP=
 
 export SLS_ENDPOINT=cn-beijing-intranet.log.aliyuncs.com
 export SLS_PROJECT=

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yulore.api.MasterService;
 import com.yulore.ollama.service.ChatTaskService;
-import com.yulore.ollama.vo.ChatResponse;
 import com.yulore.ollama.vo.ChatTask;
 import com.yulore.ollama.vo.WSCommandVO;
 import com.yulore.ollama.vo.WSEventVO;
@@ -26,7 +25,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -47,25 +45,13 @@ public class MasterMain {
         final RRemoteService rs2 = redisson.getRemoteService(_service_master);
         rs2.register(MasterService.class, masterService, _service_master_executors, serviceExecutor);
 
-        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
-        heartbeatExecutor.scheduleAtFixedRate(()->{
-            for (WebSocket conn : webSockets) {
-                if (conn.isOpen()) {
-                    conn.sendPing();
-                    log.info("send ping for {}", conn.getRemoteSocketAddress());
-                }
-            }
-        }, _ws_heartbeat / 2, _ws_heartbeat / 2, TimeUnit.SECONDS);
-
         _wsServer = new WebSocketServer(new InetSocketAddress(_ws_host, _ws_port), NettyRuntime.availableProcessors() * 2) {
             @Override
             public void onOpen(final WebSocket conn, final ClientHandshake handshake) {
-                webSockets.add(conn);
             }
 
             @Override
             public void onClose(final WebSocket conn, int code, String reason, boolean remote) {
-                webSockets.remove(conn);
             }
 
             @Override
@@ -111,7 +97,6 @@ public class MasterMain {
 
     @PreDestroy
     public void stop() throws InterruptedException {
-        heartbeatExecutor.shutdownNow();
         _wsServer.stop();
 
         serviceExecutor.shutdownNow();
@@ -139,13 +124,7 @@ public class MasterMain {
     @Value("${ws_server.port}")
     private int _ws_port;
 
-    @Value("${ws_server.heartbeat:30}")
-    private int _ws_heartbeat;
-
     private WebSocketServer _wsServer;
-
-    private ScheduledExecutorService heartbeatExecutor;
-    private final Collection<WebSocket> webSockets = new CopyOnWriteArrayList<>();
 
     @Autowired
     private ChatTaskService taskService;
