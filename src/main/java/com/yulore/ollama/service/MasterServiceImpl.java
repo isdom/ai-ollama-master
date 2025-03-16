@@ -4,6 +4,7 @@ import com.yulore.api.MasterService;
 import com.yulore.ollama.vo.*;
 import com.yulore.ollama.vo.AgentMemo;
 import com.yulore.util.ExceptionUtil;
+import io.micrometer.core.instrument.Timer;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RFuture;
 import org.redisson.api.RedissonClient;
 import org.redisson.api.RemoteInvocationOptions;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,17 +32,23 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
 
     @Autowired
     public MasterServiceImpl(@Value("${service.ollama}") final String serviceName,
+                             final ObjectProvider<Timer> timerProvider,
                              final RedissonClient redisson) {
-        asyncOllamaService = redisson.getRemoteService(serviceName)
+        final OllamaServiceAsync llm = redisson.getRemoteService(serviceName)
                 .get(OllamaServiceAsync.class, RemoteInvocationOptions.defaults()
                         .noAck()
                         .expectResultWithin(600 * 1000L));
 
-        checkAndExecuteTasks();
+        checkAndExecuteTasks(llm, timerProvider.getObject("llm.ds32.duration", "", new String[]{"method", "chat"}));
     }
 
     @Override
     public void updateAgentStatus(final String agentId, final int freeWorks, final long timestamp) {
+        final long now = System.currentTimeMillis();
+        if (now - timestamp > AGENT_UPDATE_TIMEOUT_IN_MS) {
+            // out of date update, ignore
+            return;
+        }
         log.info("updateAgentStatus: agent[{}] - freeWorks: {} - {}", agentId, freeWorks, timestamp);
         agentMemos.put(agentId, new AgentMemo(agentId, freeWorks, System.currentTimeMillis()));
     }
@@ -128,7 +136,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         log.info("CVMasterServiceImpl: shutdown");
     }
 
-    private void checkAndExecuteTasks() {
+    private void checkAndExecuteTasks(final OllamaServiceAsync llm, final Timer timer) {
         updateAgents();
         try {
             if (pendingTaskCount() > 0) {
@@ -138,9 +146,11 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                             memo.status = 1; // executing
                             log.info("start_chat_task: {}", memo.task);
                             final long now = System.currentTimeMillis();
-                            final RFuture<Map<String,String>> future = asyncOllamaService.chat(msg2list(memo.task.messages));
+                            final Timer.Sample sample = Timer.start();
+                            final RFuture<Map<String,String>> future = llm.chat(msg2list(memo.task.messages));
                             future.whenComplete((resp, ex) -> {
                                 if (resp != null) {
+                                    sample.stop(timer);
                                     memo.result = resp.get("result");
                                     memo.time_cost = System.currentTimeMillis() - now;
                                     pendingTasks.remove(memo.task.task_id);
@@ -175,7 +185,7 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
                 }
             }
         } finally {
-            scheduler.schedule(this::checkAndExecuteTasks, _task_check_interval, TimeUnit.MILLISECONDS);
+            scheduler.schedule(() -> checkAndExecuteTasks(llm, timer), _task_check_interval, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -218,8 +228,6 @@ public class MasterServiceImpl implements MasterService, ChatTaskService {
         }
         return pendingTasks;
     }
-
-    private final OllamaServiceAsync asyncOllamaService;
 
     @Builder
     @Data

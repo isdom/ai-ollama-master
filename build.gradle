@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     // for RequestMapping etc
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
@@ -31,6 +32,10 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket
     implementation 'org.java-websocket:Java-WebSocket:1.5.7'
+
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.9.17'
+    // https://mvnrepository.com/artifact/io.prometheus/simpleclient_pushgateway
+    implementation 'io.prometheus:simpleclient_pushgateway:0.16.0'
 
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
