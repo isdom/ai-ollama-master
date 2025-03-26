@@ -14,10 +14,33 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.util.UUID;
+
 @Controller
 @Slf4j
 @RequestMapping("/ollama")
 public class ApiController {
+    @RequestMapping(value = "/v1/chat/completions", method = RequestMethod.POST)
+    @ResponseBody
+    public DeferredResult<ApiResponse<ChatResponse>> chatCompletions(@RequestBody final ChatCompletionsRequest request) {
+        log.info("/v1/chat/completions: {}", request);
+        final ChatTask chatTask = ChatTask.builder().task_id(UUID.randomUUID().toString()).messages(request.messages).build();
+
+        // 定义异步结果（10 minutes 超时）
+        final DeferredResult<ApiResponse<ChatResponse>> deferredResult = new DeferredResult<>(1000L * 60 * 10);
+        try {
+            taskService.commitChatTask(chatTask, (result)->{
+                deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("0000").data(result).build());
+                log.info("commit_chat_task: complete with resp: {}", result);
+            });
+        } catch (final Exception ex) {
+            log.warn("commit_chat_task failed: {}", ExceptionUtil.exception2detail(ex));
+            deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("2000").message(ExceptionUtil.exception2detail(ex)).build());
+        } finally {
+        }
+        return deferredResult;
+    }
+
     @RequestMapping(value = "/commit_chat_task", method = RequestMethod.POST)
     @ResponseBody
     public DeferredResult<ApiResponse<ChatResponse>> commitChatTask(@RequestBody final ChatTask task) {
