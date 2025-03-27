@@ -31,10 +31,10 @@ public class ApiController {
         try {
             taskService.commitChatTask(chatTask, (result)->{
                 deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("0000").data(result).build());
-                log.info("commit_chat_task: complete with resp: {}", result);
+                log.info("/v1/chat/completions: complete with resp: {}", result);
             });
         } catch (final Exception ex) {
-            log.warn("commit_chat_task failed: {}", ExceptionUtil.exception2detail(ex));
+            log.warn("/v1/chat/completions failed: {}", ExceptionUtil.exception2detail(ex));
             deferredResult.setResult(ApiResponse.<ChatResponse>builder().code("2000").message(ExceptionUtil.exception2detail(ex)).build());
         } finally {
         }
